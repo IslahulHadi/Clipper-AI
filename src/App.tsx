@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
-import type { AnalysisResult, AnalysisStage, MediaInfo } from './types'
-import { analyzeVideo } from './lib/analysis'
+import type { AnalysisResult, AnalysisStage, Clip, MediaInfo } from './types'
+import { analyzeVideo, createManualClip } from './lib/analysis'
 import { createThumbnails, isVideoFile, readVideoMetadata } from './lib/media'
 import { formatBytes, formatTime } from './lib/format'
 import { Topbar } from './components/Topbar'
-import { UploadScreen } from './components/UploadScreen'
+import { LandingPage } from './components/LandingPage'
 import { AnalyzingOverlay } from './components/AnalyzingOverlay'
+import { ClipsGallery } from './components/ClipsGallery'
 import { Studio } from './components/Studio'
 
-type Phase = 'idle' | 'analyzing' | 'editor'
+type Phase = 'idle' | 'analyzing' | 'clips' | 'editor'
+
+const UNSUPPORTED_HOSTS = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|facebook\.com|fb\.watch|twitter\.com|x\.com|vimeo\.com|twitch\.tv|drive\.google\.com)/i
 
 interface ToastState {
   id: number
@@ -32,6 +35,7 @@ export default function App() {
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [demoLoading, setDemoLoading] = useState(false)
+  const [editClipId, setEditClipId] = useState<string | undefined>(undefined)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const jobRef = useRef(0)
@@ -142,7 +146,9 @@ export default function App() {
       setAnalysisProgress(100)
       await wait(420)
       if (job !== jobRef.current) return
-      setPhase('editor')
+      setEditClipId(undefined)
+      setPhase('clips')
+      window.scrollTo({ top: 0 })
     } catch (error) {
       if (job !== jobRef.current) return
       URL.revokeObjectURL(url)
@@ -175,30 +181,98 @@ export default function App() {
     }
   }
 
-  const showProject = Boolean(project && phase !== 'idle')
+  async function handleUrl(value: string) {
+    let url: URL
+    try {
+      url = new URL(value)
+    } catch {
+      notify('Link tidak valid. Tempel URL lengkap yang diawali https://', 'error')
+      return
+    }
+    if (UNSUPPORTED_HOSTS.test(url.hostname)) {
+      notify('Link platform sosial belum bisa diambil langsung dari browser. Unduh videonya, lalu upload file.', 'error')
+      return
+    }
+    try {
+      const response = await fetch(url.href)
+      if (!response.ok) throw new Error()
+      const blob = await response.blob()
+      const name = decodeURIComponent(url.pathname.split('/').pop() || 'video-link.mp4')
+      const file = new File([blob], name, { type: blob.type || 'video/mp4' })
+      await handleFile(file)
+    } catch {
+      notify('Video dari link ini tidak bisa diambil (CORS atau bukan file video). Coba upload file.', 'error')
+    }
+  }
+
+  function openClip(clipId: string) {
+    setEditClipId(clipId)
+    setPhase('editor')
+    window.scrollTo({ top: 0 })
+  }
+
+  function addManualFromGallery() {
+    if (!analysis || !project) return
+    const manual: Clip = {
+      ...createManualClip(project.duration, project.duration * 0.3),
+      thumbnail: analysis.clips[0]?.thumbnail,
+    }
+    setAnalysis({ ...analysis, clips: [...analysis.clips, manual] })
+    openClip(manual.id)
+  }
+
+  function backToGallery(clips: Clip[]) {
+    setAnalysis((previous) => (previous ? { ...previous, clips } : previous))
+    setPhase('clips')
+    window.scrollTo({ top: 0 })
+  }
+
+  function goHome() {
+    if (phase === 'analyzing') return
+    if (phase !== 'idle' && !window.confirm('Kembali ke beranda? Klip yang belum diekspor akan hilang.')) return
+    jobRef.current += 1
+    setPhase('idle')
+    setAnalysis(null)
+    setProject(null)
+  }
+
+  const inWorkspace = Boolean(project && analysis && (phase === 'clips' || phase === 'editor'))
 
   return (
-    <div className="app-shell">
-      <Topbar
-        projectName={showProject ? project?.name : undefined}
-        projectMeta={
-          showProject && project?.duration ? `${formatTime(project.duration)} · ${formatBytes(project.size)}` : undefined
-        }
-        onReplace={showProject ? openPicker : undefined}
-      />
+    <div className={`app-shell${inWorkspace ? '' : ' is-landing'}`}>
+      {inWorkspace ? (
+        <Topbar
+          projectName={project?.name}
+          projectMeta={project?.duration ? `${formatTime(project.duration)} · ${formatBytes(project.size)}` : undefined}
+          section={phase === 'editor' ? 'Editor' : 'Klip'}
+          onHome={goHome}
+          onReplace={openPicker}
+        />
+      ) : null}
 
       {phase === 'editor' && analysis && project ? (
         <Studio
-          key={project.url}
+          key={`${project.url}-${editClipId ?? ''}`}
           project={project}
           analysis={analysis}
+          initialClipId={editClipId}
+          onBack={backToGallery}
           onReplace={openPicker}
           onNotify={notify}
         />
+      ) : phase === 'clips' && analysis && project ? (
+        <ClipsGallery
+          project={project}
+          analysis={analysis}
+          onEdit={openClip}
+          onAddManual={addManualFromGallery}
+          onNotify={notify}
+        />
       ) : (
-        <UploadScreen
+        <LandingPage
           onBrowse={openPicker}
           onFile={handleFile}
+          onUrl={handleUrl}
           onDemo={handleDemo}
           demoLoading={demoLoading}
         />

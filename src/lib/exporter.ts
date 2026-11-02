@@ -150,7 +150,7 @@ export async function exportClip({
     await document.fonts.ready.catch(() => undefined)
 
     const renderFrame = () => {
-      context.fillStyle = '#080908'
+      context.fillStyle = '#050505'
       context.fillRect(0, 0, canvas.width, canvas.height)
       drawFrameFromVideo(context, video, canvas.width, canvas.height, cropX)
       if (hookText.trim()) {

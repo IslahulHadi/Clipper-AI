@@ -52,7 +52,7 @@ export function drawHookOverlay(
   const top = Math.round(height * 0.1)
   const barWidth = Math.round(width * 0.075)
 
-  context.fillStyle = '#D8FF4F'
+  context.fillStyle = '#A78BFA'
   context.fillRect(marginX, top, barWidth, Math.max(5, Math.round(height * 0.004)))
 
   context.font = `800 ${fontSize}px "Instrument Sans Variable", "Instrument Sans", Arial, sans-serif`
