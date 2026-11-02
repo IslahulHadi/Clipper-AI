@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowLeft,
   Grid2X2,
   Maximize2,
   Pause,
@@ -21,15 +22,18 @@ import { Timeline } from './Timeline'
 interface StudioProps {
   project: MediaInfo
   analysis: AnalysisResult
+  initialClipId?: string
+  onBack: (clips: Clip[]) => void
   onReplace: () => void
   onNotify: (message: string, tone?: 'success' | 'error') => void
 }
 
-export function Studio({ project, analysis, onReplace, onNotify }: StudioProps) {
+export function Studio({ project, analysis, initialClipId, onBack, onReplace, onNotify }: StudioProps) {
+  const initialClip = analysis.clips.find((clip) => clip.id === initialClipId) ?? analysis.clips[0]
   const [clips, setClips] = useState<Clip[]>(() =>
-    analysis.clips.map((clip, index) => ({ ...clip, selected: index === 0 })),
+    analysis.clips.map((clip) => ({ ...clip, selected: clip.id === initialClip?.id })),
   )
-  const [activeId, setActiveId] = useState(analysis.clips[0]?.id ?? '')
+  const [activeId, setActiveId] = useState(initialClip?.id ?? '')
   const [aspect, setAspect] = useState<AspectRatio>('9:16')
   const [cropX, setCropX] = useState(0.5)
   const [hookEnabled, setHookEnabled] = useState(false)
@@ -37,7 +41,7 @@ export function Studio({ project, analysis, onReplace, onNotify }: StudioProps) 
   const [muted, setMuted] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [showCover, setShowCover] = useState(true)
-  const [currentTime, setCurrentTime] = useState(analysis.clips[0]?.start ?? 0)
+  const [currentTime, setCurrentTime] = useState(initialClip?.start ?? 0)
   const [videoReady, setVideoReady] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
@@ -253,6 +257,16 @@ export function Studio({ project, analysis, onReplace, onNotify }: StudioProps) 
       <main className="stage">
         <div className="stage-toolbar">
           <div className="stage-toolbar-left">
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => onBack(clips)}
+              disabled={exporting}
+            >
+              <ArrowLeft size={13} />
+              Semua klip
+            </button>
+            <span className="stage-divider" />
             <span className="mono-label">PREVIEW</span>
             <span className="stage-divider" />
             <span className="stage-clip-title">{activeClip.title}</span>

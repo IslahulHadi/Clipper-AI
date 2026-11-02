@@ -8,6 +8,12 @@ menyiapkan klip vertikal yang bisa langsung diekspor.
 
 ## Fitur
 
+- **Landing page** — hero dengan input link/upload, showcase fitur interaktif,
+  section model AI, alur kerja, privasi, FAQ, dan drag & drop di seluruh halaman.
+- **Galeri klip** — setelah analisis, semua klip tampil sebagai kartu 9:16 dengan
+  skor viral, peringkat, preview saat hover, tombol Edit dan Unduh cepat.
+- **Link video langsung** — tempel URL file video (.mp4/.webm) yang mengizinkan
+  CORS. Link YouTube/TikTok/Instagram belum didukung dari browser.
 - **Upload lokal** — video tidak pernah dikirim ke server.
 - **Deteksi highlight** — memindai waveform audio, memberi skor pada setiap
   kandidat, dan memilih klip yang tidak saling tumpang tindih.
@@ -56,13 +62,15 @@ mengubah alur editor.
 
 ```text
 src/
-  components/        UI studio, upload, timeline, export panel
+  components/        landing page, galeri klip, studio, timeline, export panel
   lib/analysis.ts    deteksi highlight + waveform
   lib/exporter.ts    render canvas + MediaRecorder
   lib/media.ts       metadata, thumbnail, helper canvas
   lib/canvas.ts      hook overlay dan dimensi output
-  App.tsx            alur upload → analisis → editor
-  styles.css         design system dan layout responsif
+  App.tsx            alur landing → analisis → galeri klip → editor
+  styles.css         design system dan layout studio
+  landing.css        landing page
+  gallery.css        galeri hasil klip
 public/demo.mp4      video contoh 50 detik
 ```
 
